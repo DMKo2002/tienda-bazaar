@@ -1,6 +1,6 @@
 # Tienda Bazaar
 
-Template de tienda pensado para almacén/comida (base clonada de tienda-minimalista, pendiente de rediseño visual).
+Base clonada de tienda-glow (carrusel de banners, grid a 5 columnas, mega-menú, barra de confianza + colecciones, etc.), pendiente de rediseño visual propio.
 
 ## Stack
 - Next.js 14+ (App Router)

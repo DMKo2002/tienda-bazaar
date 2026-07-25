@@ -46,7 +46,12 @@ export default function Navbar({ storeName = 'TIENDA', logoUrl, tourUrl }: Navba
     if (closeTimer.current) clearTimeout(closeTimer.current)
   }
 
+  // Altura del header (misma referencia que ya usaba el mega-menu para pegarse justo debajo).
+  // La barra de categorías fija se ubica ahí, y el mega-menú ahora se abre debajo de AMBAS
+  // (header + barra de categorías, 52px fija).
   const headerHeight = scrolled ? 'top-[52px]' : 'top-[72px]'
+  const CATBAR_HEIGHT = 52
+  const megaMenuTop = scrolled ? 'top-[104px]' : 'top-[124px]'
 
   return (
     <>
@@ -61,15 +66,16 @@ export default function Navbar({ storeName = 'TIENDA', logoUrl, tourUrl }: Navba
               Home
             </Link>
 
-            {/* Tienda trigger */}
-            <div onMouseEnter={open} onMouseLeave={close}>
-              <Link
-                href="/tienda"
-                className={`text-xs tracking-[0.15em] uppercase transition-colors ${megaOpen ? 'text-[var(--color-stone)]' : 'text-[var(--color-charcoal)] hover:text-[var(--color-stone)]'}`}
-              >
-                Tienda
-              </Link>
-            </div>
+            {/* Tienda trigger — sin div envolvente: si no, queda una caja de línea
+                distinta a la de los demás links y "Tienda" se ve corrido hacia abajo */}
+            <Link
+              href="/tienda"
+              onMouseEnter={open}
+              onMouseLeave={close}
+              className={`text-xs tracking-[0.15em] uppercase transition-colors ${megaOpen ? 'text-[var(--color-stone)]' : 'text-[var(--color-charcoal)] hover:text-[var(--color-stone)]'}`}
+            >
+              Tienda
+            </Link>
 
             {tourUrl && (
               <Link href="/tour" className="text-xs tracking-[0.15em] uppercase text-[var(--color-charcoal)] hover:text-[var(--color-stone)] transition-colors">
@@ -128,15 +134,45 @@ export default function Navbar({ storeName = 'TIENDA', logoUrl, tourUrl }: Navba
         </div>
       </header>
 
-      {/* ── MEGA MENU ── full width panel */}
+      {/* ── BARRA DE CATEGORÍAS ── fija, siempre visible debajo del header (solo desktop) */}
+      {categories.length > 0 && (
+        <nav
+          className={`fixed left-0 right-0 z-[45] hidden md:flex items-center bg-[var(--color-warm-white)] border-b border-[var(--color-border)] transition-all duration-500 ${headerHeight}`}
+          style={{ height: CATBAR_HEIGHT }}
+          onMouseEnter={cancelClose}
+          onMouseLeave={close}
+        >
+          <div className="max-w-7xl mx-auto px-6 w-full flex items-center gap-8 overflow-x-auto">
+            <Link
+              href="/tienda"
+              onMouseEnter={open}
+              className="text-xs tracking-[0.15em] uppercase text-[var(--color-charcoal)] hover:text-[var(--color-stone)] transition-colors whitespace-nowrap flex-shrink-0"
+            >
+              Todo
+            </Link>
+            {categories.map(cat => (
+              <Link
+                key={cat.id}
+                href={`/tienda?cat=${cat.slug}`}
+                onMouseEnter={open}
+                className={`text-xs tracking-[0.15em] uppercase transition-colors whitespace-nowrap flex-shrink-0 ${megaOpen ? 'text-[var(--color-stone)]' : 'text-[var(--color-charcoal)] hover:text-[var(--color-stone)]'}`}
+              >
+                {cat.name}
+              </Link>
+            ))}
+          </div>
+        </nav>
+      )}
+
+      {/* ── MEGA MENU ── full width panel, se abre debajo de la barra de categorías */}
       {categories.length > 0 && (
         <div
-          className={`fixed left-0 right-0 z-40 hidden md:block transition-all duration-300 ease-in-out ${headerHeight} ${
+          className={`fixed left-0 right-0 z-40 hidden md:block border-b border-[var(--color-border)] shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300 ease-in-out ${megaMenuTop} ${
             megaOpen
               ? 'opacity-100 translate-y-0 pointer-events-auto'
               : 'opacity-0 -translate-y-2 pointer-events-none'
           }`}
-          style={{ backgroundColor: '#e5e7eb' }}
+          style={{ backgroundColor: '#FFFFFF' }}
           onMouseEnter={cancelClose}
           onMouseLeave={close}
         >
