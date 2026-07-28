@@ -6,9 +6,15 @@ export const dynamic = 'force-dynamic'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import ProductCard from '@/components/shop/ProductCard'
+import BannerCarousel from '@/components/layout/BannerCarousel'
 import Link from 'next/link'
-import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
+
+const COLLECTION_PALETTES = [
+  { bg: '#E3E0DA', text: '#1A1A1A' },
+  { bg: '#C3C2BB', text: '#1A1A1A' },
+  { bg: '#A4A49C', text: '#1A1A1A' },
+]
 
 export default async function HomePage() {
   // cookies() debe llamarse ANTES de cualquier await
@@ -26,11 +32,11 @@ export default async function HomePage() {
 
   const { data: config } = await supabase
     .from('store_config')
-    .select('logo_url, hero_image_url, hero_eyebrow, hero_title_line1, hero_title_italic, hero_title_line3, hero_season, hero_text_color, whatsapp_number, notification_email, instagram_url, facebook_url, tiktok_url, pickup_address, pickup_enabled, branches, price_visibility, video_360_url')
+    .select('logo_url, whatsapp_number, notification_email, instagram_url, facebook_url, tiktok_url, pickup_address, pickup_enabled, branches, price_visibility, collection_posts, collection_text_color')
     .eq('tenant_id', TENANT_ID())
     .single()
 
-  // Imágenes configurables desde panel Personalización
+  // Imágenes configurables desde Panel Admin > Personalización (banners grandes)
   const { data: assetsRows } = await supabase
     .from('store_assets')
     .select('slot, url')
@@ -39,138 +45,108 @@ export default async function HomePage() {
   const asset = (slot: string): string | null =>
     assetsRows?.find(a => a.slot === slot)?.url ?? null
 
-  // Productos destacados (últimos 4)
-  const { data: products } = await supabase
+  // Categorías para las 3 colecciones (mismo criterio que Atelier: si el tenant
+  // no cargó título a mano, se usa el nombre de la categoría automáticamente)
+  const { data: categories } = await supabase
+    .from('categories')
+    .select('id, name, slug')
+    .eq('tenant_id', TENANT_ID())
+    .eq('active', true)
+    .order('sort_order')
+    .limit(3)
+
+  const PRODUCT_SELECT = 'id, name, slug, product_images(*), variants(color, size, price_rules(*))'
+
+  // Catálogo grande de la home — 5 columnas × ~8 filas (mismo ancho que /tienda)
+  const { data: catalog } = await supabase
     .from('products')
-    .select('id, name, slug, product_images(*), variants(price_rules(*))')
+    .select(PRODUCT_SELECT)
     .eq('tenant_id', TENANT_ID())
     .eq('active', true)
     .order('created_at', { ascending: false })
-    .limit(4)
+    .limit(48)
 
   const storeName = tenant?.name ?? 'TIENDA'
   const priceVisibility = (config as any)?.price_visibility ?? 'all'
   const showPrices = priceVisibility === 'all' || (priceVisibility === 'logged_in' && isLoggedIn)
 
+  function toCardProps(product: any, i: number) {
+    const cover = product.product_images?.find((img: any) => img.is_cover) ?? product.product_images?.[0]
+    const retailPrice = product.variants?.[0]?.price_rules?.find((p: any) => p.type === 'retail' && p.active)?.price
+    const retailCompareAt = product.variants?.[0]?.price_rules?.find((p: any) => p.type === 'retail' && p.active)?.compare_at_price
+    const wholesalePrice = product.variants?.[0]?.price_rules?.find((p: any) => p.type === 'wholesale' && p.active)?.price
+    const colors = [...new Set((product.variants ?? []).map((v: any) => v.color).filter(Boolean))] as string[]
+    const sizes = [...new Set((product.variants ?? []).map((v: any) => v.size).filter(Boolean))] as string[]
+    return {
+      key: product.id,
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      coverUrl: cover?.url,
+      retailPrice,
+      retailCompareAt,
+      wholesalePrice,
+      showPrices,
+      priceVisibility,
+      colors,
+      sizes,
+      index: i,
+    }
+  }
+
+  const banner1 = asset('banner_1')
+  const banner2 = asset('banner_2')
+  const banner3 = asset('banner_3')
+  const bannerImages = [banner1, banner2, banner3].filter(Boolean) as string[]
+
+  // Título y bajada de cada banner de colección: si el tenant los cargó a mano
+  // en el panel, tienen prioridad sobre el nombre de categoría automático.
+  const rawCollectionPosts = (config as any)?.collection_posts
+  const collections = Array.from({ length: 3 }, (_, i) => ({
+    name: rawCollectionPosts?.[i]?.title || (categories as any)?.[i]?.name || ['Nueva Colección', 'Accesorios', 'Ropa'][i],
+    subtitle: rawCollectionPosts?.[i]?.subtitle || 'Piezas seleccionadas para esta temporada.',
+    slug: (categories as any)?.[i]?.slug ?? ['nueva-coleccion', 'accesorios', 'ropa'][i],
+    palette: COLLECTION_PALETTES[i],
+  }))
+  const collectionTextColor = (config as any)?.collection_text_color || null
+
   return (
     <>
-      <Navbar storeName={storeName} logoUrl={config?.logo_url} tourUrl={(config as any)?.video_360_url} />
+      <Navbar storeName={storeName} logoUrl={config?.logo_url} />
 
-      <main>
+      {/* El header flota transparente sobre el banner (como siempre), pero la barra de
+          categorías fija nueva sí tiene fondo sólido y empuja el banner hacia abajo. */}
+      <main className="pt-[124px]">
 
-        {/* ── HERO ─────────────────────────────────────────────── */}
-        <section
-          className="relative min-h-screen flex items-end pb-20 overflow-hidden bg-[#EDE8E1]"
-          style={config?.hero_image_url ? {
-            backgroundImage: `url(${config.hero_image_url})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          } : undefined}
-        >
-          {/* Overlay oscuro cuando hay imagen */}
-          {config?.hero_image_url && (
-            <div className="absolute inset-0 bg-black/40" />
-          )}
-
-          {/* Texto hero */}
-          {(() => {
-            const customColor = (config as any)?.hero_text_color
-            const textStyle = customColor ? { color: customColor } : undefined
-            const defaultEyebrowClass = config?.hero_image_url ? 'text-white/70' : 'text-[var(--color-stone)]'
-            const defaultTitleClass   = config?.hero_image_url ? 'text-white'    : 'text-[var(--color-charcoal)]'
-            const defaultLinkClass    = config?.hero_image_url
-              ? 'border-white/70 text-white hover:border-white hover:text-white/80'
-              : 'border-[var(--color-charcoal)] text-[var(--color-charcoal)] hover:text-[var(--color-stone)] hover:border-[var(--color-stone)]'
-            return (
-              <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
-                <div className="max-w-xl opacity-0 animate-fade-up delay-100">
-                  <p
-                    className={`text-xs tracking-[0.25em] uppercase mb-4 ${!customColor ? defaultEyebrowClass : ''}`}
-                    style={textStyle ? { color: customColor + 'B3' } : undefined}
-                  >
-                    {(config as any)?.hero_eyebrow ?? 'Nueva temporada'}
-                  </p>
-                  <h1
-                    className={`font-display text-6xl md:text-8xl font-light leading-none mb-8 ${!customColor ? defaultTitleClass : ''}`}
-                    style={textStyle}
-                  >
-                    {(config as any)?.hero_title_line1 ?? 'Estilo que'}<br />
-                    <em className="italic">{(config as any)?.hero_title_italic ?? 'trasciende'}</em><br />
-                    {(config as any)?.hero_title_line3 ?? 'tendencia'}
-                  </h1>
-                  <Link
-                    href="/tienda"
-                    className={`inline-flex items-center gap-3 text-xs tracking-[0.2em] uppercase border-b pb-1 transition-colors ${!customColor ? defaultLinkClass : ''}`}
-                    style={textStyle}
-                  >
-                    Ver colección <ArrowRight size={14} />
-                  </Link>
-                </div>
-              </div>
-            )
-          })()}
-
-          {/* Número decorativo */}
-          <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-0 animate-fade-in delay-400 hidden lg:block">
-            <p className="font-display text-[200px] font-light text-[var(--color-charcoal)]/5 leading-none select-none">
-              {(config as any)?.hero_season ?? 'AW'}
-            </p>
-          </div>
-
-          {/* Línea vertical decorativa */}
-          <div className="absolute left-6 top-32 bottom-20 w-px bg-[var(--color-charcoal)]/10 hidden lg:block" />
-
-        </section>
-
-        {/* ── FEATURED COLLECTION ──────────────────────────────── */}
-        <section className="w-full px-6 py-24">
-
-          <div className="flex items-center justify-between mb-12">
-            <div>
-              <p className="text-xs tracking-[0.2em] uppercase text-[var(--color-stone)] mb-2">
-                Selección
-              </p>
-              <h2 className="font-display text-4xl font-light text-[var(--color-charcoal)]">
-                Featured Collection
-              </h2>
-            </div>
-            <Link
-              href="/tienda"
-              className="hidden md:inline-flex items-center gap-2 text-xs tracking-[0.15em] uppercase text-[var(--color-stone)] hover:text-[var(--color-charcoal)] transition-colors"
-            >
-              Ver todo <ArrowRight size={13} />
+        {/* ── BANNERS (carrusel infinito de 3 imágenes) ─────────── */}
+        {bannerImages.length > 0 ? (
+          <BannerCarousel images={bannerImages} alt={storeName} />
+        ) : (
+          // Fallback simple mientras no se suben banners desde Personalización
+          <section className="w-full py-24 px-6 bg-white text-center">
+            <p className="text-xs tracking-[0.25em] uppercase text-[var(--color-stone)] mb-3">{storeName}</p>
+            <h1 className="font-display text-4xl md:text-6xl font-light text-[var(--color-charcoal)]">
+              Cuidá tu piel, sentite bien
+            </h1>
+            <Link href="/tienda" className="inline-flex items-center gap-2 mt-6 text-xs tracking-[0.2em] uppercase border-b border-[var(--color-charcoal)] pb-1">
+              Ver productos <ArrowRight size={13} />
             </Link>
+          </section>
+        )}
+
+        {/* ── PRODUCTOS DESTACADOS ─────────────────────────────── */}
+        <section className="w-full px-6 md:px-10 py-16">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-[var(--color-charcoal)]">
+              Productos destacados
+            </h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {products?.map((product: any, i: number) => {
-              const cover = product.product_images?.find((img: any) => img.is_cover) ?? product.product_images?.[0]
-              const retailPrice = product.variants?.[0]?.price_rules?.find((p: any) => p.type === 'retail' && p.active)?.price
-              const wholesalePrice = product.variants?.[0]?.price_rules?.find((p: any) => p.type === 'wholesale' && p.active)?.price
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
+            {catalog?.map((p: any, i: number) => <ProductCard {...toCardProps(p, i)} />)}
 
-              const colors = [...new Set((product.variants ?? []).map((v: any) => v.color).filter(Boolean))] as string[]
-              const sizes = [...new Set((product.variants ?? []).map((v: any) => v.size).filter(Boolean))] as string[]
-
-              return (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  slug={product.slug}
-                  coverUrl={cover?.url}
-                  retailPrice={retailPrice}
-                  wholesalePrice={wholesalePrice}
-                  showPrices={showPrices}
-                  priceVisibility={priceVisibility}
-                  colors={colors}
-                  sizes={sizes}
-                  index={i}
-                />
-              )
-            })}
-
-            {(!products || products.length === 0) && (
-              <div className="col-span-4 py-20 text-center">
+            {(!catalog || catalog.length === 0) && (
+              <div className="col-span-full py-20 text-center">
                 <p className="text-[var(--color-stone)] font-light">
                   Los productos se mostrarán aquí
                 </p>
@@ -178,64 +154,70 @@ export default async function HomePage() {
             )}
           </div>
 
-          {/* Mobile ver todo */}
-          <div className="mt-10 text-center md:hidden">
+          <div className="mt-10 text-center">
             <Link href="/tienda" className="inline-flex items-center gap-2 text-xs tracking-[0.15em] uppercase text-[var(--color-stone)]">
-              Ver todos los productos <ArrowRight size={13} />
-            </Link>
-          </div>
-
-        </section>
-
-        {/* ── BANNER INTERMEDIO ────────────────────────────────── */}
-        <section className="bg-[var(--color-charcoal)] py-24 px-6">
-          <div className="max-w-3xl mx-auto text-center">
-            <p className="text-xs tracking-[0.3em] uppercase text-white/40 mb-6">Los Destacados</p>
-            <h2 className="font-display text-5xl md:text-6xl font-light italic text-white leading-tight mb-8">
-              Conocé productos especialmente<br />elegidos para vos
-            </h2>
-            <Link
-              href="/tienda"
-              className="inline-flex items-center gap-3 text-xs tracking-[0.2em] uppercase text-white border-b border-white/30 pb-1 hover:border-white transition-colors"
-            >
-              Shop now <ArrowRight size={13} />
+              Ver catálogo completo <ArrowRight size={13} />
             </Link>
           </div>
         </section>
 
-        {/* ── MOODBOARD ────────────────────────────────────────── */}
-        <section className="w-full px-6 py-24">
-          <div className="mb-10">
-            <p className="text-xs tracking-[0.2em] uppercase text-[var(--color-stone)] mb-2">Instagram</p>
-            <h2 className="font-display text-3xl font-light text-[var(--color-charcoal)]">MoodBoard</h2>
-            <p className="text-sm text-[var(--color-stone)] mt-2 font-light">
-              Descubrí nuestras selecciones diseñadas para destacar, redefiniendo la elegancia contemporánea
-            </p>
+        {/* ── FEATURES BAR ─────────────────────────────────────── */}
+        <section className="max-w-7xl mx-auto px-6 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {[
+              { title: 'Envío a todo el país', desc: 'En compras que superen el monto mínimo. Entrega rápida y segura a todo el país.' },
+              { title: 'Compra Segura', desc: 'Garantizamos una experiencia de compra segura de principio a fin.' },
+              { title: 'Atención al cliente', desc: 'Estamos disponibles para ayudarte en todo momento por WhatsApp e email.' },
+            ].map((feat, i) => (
+              <div key={i} className="flex gap-4 items-start">
+                <div className="w-11 h-11 bg-[var(--color-cream)] flex-shrink-0" />
+                <div>
+                  <h3 className="font-bold text-sm text-[var(--color-charcoal)] mb-1.5">{feat.title}</h3>
+                  <p className="text-xs leading-relaxed text-[var(--color-stone)]">{feat.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
+        </section>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {['#DDD5C8', '#C8CDD5', '#C8D5CC', '#D5C8CE'].map((bg, i) => {
-              const imgUrl = asset(`moodboard_${i + 1}`)
+        {/* ── COLECCIONES ──────────────────────────────────────── */}
+        <section className="w-full px-4 md:px-8 lg:px-12 pb-20">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {collections.map((col, i) => {
+              const colImg = asset(`collection_${i + 1}`)
+              // Si el tenant eligió un color, se respeta siempre (con o sin imagen).
+              // Si no, se mantiene el comportamiento anterior por defecto.
+              const baseColor = collectionTextColor ?? (colImg ? '#ffffff' : '#1A1A1A')
               return (
-                <div
+                <Link
                   key={i}
-                  className="aspect-square overflow-hidden opacity-0 animate-fade-up relative"
-                  style={{
-                    backgroundColor: bg,
-                    animationDelay: `${i * 100}ms`,
-                    animationFillMode: 'forwards'
-                  }}
+                  href={`/tienda?cat=${col.slug}`}
+                  className={`group relative overflow-hidden aspect-[4/5] block ${i === 1 ? 'md:translate-y-6' : ''}`}
+                  style={{ backgroundColor: col.palette.bg }}
                 >
-                  {imgUrl && (
-                    <Image
-                      src={imgUrl.split('?')[0]}
-                      alt={`Mood ${i + 1}`}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 50vw, 25vw"
+                  {colImg && (
+                    <img
+                      src={colImg}
+                      alt={col.name}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                     />
                   )}
-                </div>
+                  <div className="absolute inset-0 bg-black/5 group-hover:bg-black/20 transition-colors" />
+                  <div className="absolute bottom-0 left-0 right-0 p-6">
+                    <h2 className="text-2xl font-bold mb-1" style={{ color: baseColor }}>
+                      {col.name}
+                    </h2>
+                    <p className="text-xs mb-4 leading-relaxed" style={{ color: baseColor + 'B3' }}>
+                      {col.subtitle}
+                    </p>
+                    <span
+                      className="text-xs font-bold tracking-[0.15em] uppercase border-b-2 pb-0.5 group-hover:text-[var(--color-accent)] group-hover:border-[var(--color-accent)] transition-colors"
+                      style={{ color: baseColor, borderColor: baseColor }}
+                    >
+                      DISCOVER MORE
+                    </span>
+                  </div>
+                </Link>
               )
             })}
           </div>
