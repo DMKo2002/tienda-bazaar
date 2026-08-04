@@ -53,7 +53,7 @@ export default async function TiendaPage({ searchParams }: Props) {
   // Fetch all active products — we'll sort/filter with JS for price and discount
   let query = supabase
     .from('products')
-    .select('id, name, slug, category_id, product_categories(category_id), product_images(*), variants(color, color_hex, size, price_rules(type, price, compare_at_price, active, min_qty))')
+    .select('id, name, slug, category_id, product_categories(category_id), product_images(*), variants(id, color, color_hex, size, stock, price_rules(type, price, compare_at_price, active, min_qty))')
     .eq('tenant_id', TENANT_ID())
     .eq('active', true)
 
@@ -102,8 +102,10 @@ export default async function TiendaPage({ searchParams }: Props) {
       return (a.sort_order ?? 0) - (b.sort_order ?? 0)
     })
     const images = sortedImages.map((img: any) => img.url).filter(Boolean)
+    const variantId = pricedVariants[0]?.id ?? null
+    const stock = pricedVariants[0]?.stock ?? 0
 
-    return { ...product, retailPrice, retailCompareAt, wholesalePrice, colors, sizes, cover, images }
+    return { ...product, retailPrice, retailCompareAt, wholesalePrice, colors, sizes, cover, images, variantId, stock }
   })
 
   // Filter by category (incluye subcategorías cuando se elige una categoría madre).
@@ -231,6 +233,8 @@ export default async function TiendaPage({ searchParams }: Props) {
 
   const storeName = tenant?.name ?? 'TIENDA'
   const priceVisibility = (config as any)?.price_visibility ?? 'all'
+  const imageRatio: '2:3' | '1:1' = (config as any)?.product_image_ratio === '1:1' ? '1:1' : '2:3'
+  const ignoreStock = Boolean((config as any)?.ignore_stock)
 
   let showPrices = false
   let showWholesale = false
@@ -315,6 +319,10 @@ export default async function TiendaPage({ searchParams }: Props) {
                 colors={product.colors}
                 sizes={product.sizes}
                 index={i}
+                imageRatio={imageRatio}
+                variantId={product.variantId}
+                stock={product.stock}
+                ignoreStock={ignoreStock}
               />
             ))}
 

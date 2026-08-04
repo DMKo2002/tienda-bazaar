@@ -9,6 +9,7 @@ import Footer from '@/components/layout/Footer'
 import ProductCard from '@/components/shop/ProductCard'
 import BannerCarousel from '@/components/layout/BannerCarousel'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 
 const COLLECTION_PALETTES = [
@@ -55,20 +56,23 @@ export default async function HomePage() {
     .order('sort_order')
     .limit(3)
 
-  const PRODUCT_SELECT = 'id, name, slug, product_images(*), variants(color, size, price_rules(*))'
+  const PRODUCT_SELECT = 'id, name, slug, product_images(*), variants(id, color, size, stock, price_rules(*))'
 
-  // Catálogo grande de la home — 5 columnas × ~8 filas (mismo ancho que /tienda)
+  // Catálogo grande de la home — Bazaar es de producto simple, con 10 alcanza
+  // para la sección "Productos destacados" (el resto se ve en /tienda)
   const { data: catalog } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
     .eq('tenant_id', TENANT_ID())
     .eq('active', true)
     .order('created_at', { ascending: false })
-    .limit(48)
+    .limit(10)
 
   const storeName = tenant?.name ?? 'TIENDA'
   const priceVisibility = (config as any)?.price_visibility ?? 'all'
   const showPrices = priceVisibility === 'all' || (priceVisibility === 'logged_in' && isLoggedIn)
+  const imageRatio: '2:3' | '1:1' = (config as any)?.product_image_ratio === '1:1' ? '1:1' : '2:3'
+  const ignoreStock = Boolean((config as any)?.ignore_stock)
 
   function toCardProps(product: any, i: number) {
     const cover = product.product_images?.find((img: any) => img.is_cover) ?? product.product_images?.[0]
@@ -91,6 +95,10 @@ export default async function HomePage() {
       colors,
       sizes,
       index: i,
+      imageRatio,
+      variantId: product.variants?.[0]?.id ?? null,
+      stock: product.variants?.[0]?.stock ?? 0,
+      ignoreStock,
     }
   }
 
@@ -196,10 +204,12 @@ export default async function HomePage() {
                   style={{ backgroundColor: col.palette.bg }}
                 >
                   {colImg && (
-                    <img
+                    <Image
                       src={colImg}
                       alt={col.name}
-                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      className="object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                     />
                   )}
                   <div className="absolute inset-0 bg-black/5 group-hover:bg-black/20 transition-colors" />
