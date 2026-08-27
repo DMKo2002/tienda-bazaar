@@ -315,7 +315,7 @@ export default async function TiendaPage({ searchParams }: Props) {
           />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-12">
             {products.map((product: any, i: number) => (
-              <div key={product.id}>
+              <div key={product.id} className="bazaar-card-cell">
                 <ProductCard
                   id={product.id}
                   name={product.name}
@@ -344,7 +344,7 @@ export default async function TiendaPage({ searchParams }: Props) {
                 {isListMode && showPrices && product.sizes.length > 1 && (
                   <a
                     href={`/tienda/${product.slug}`}
-                    className="block w-full mt-2 py-2.5 text-[11px] tracking-[0.15em] uppercase font-medium text-center bg-[var(--color-charcoal)] text-white hover:bg-[var(--color-stone)] transition-colors duration-200"
+                    className="bazaar-buy-btn block w-full py-2.5 text-[11px] tracking-[0.15em] uppercase font-medium text-center bg-[var(--color-charcoal)] text-white hover:bg-[var(--color-stone)] transition-colors duration-200"
                   >
                     Comprar
                   </a>

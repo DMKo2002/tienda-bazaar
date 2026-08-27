@@ -79,3 +79,51 @@ body {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--color-cream); }
 ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+
+/* ── Grilla de productos: alinear card por fila ──────────────────────────
+   Todo esto es puramente visual y vive solo acá (tienda-bazaar) — no toca
+   el ProductCard compartido de tienda-core, solo le fuerza estilos desde
+   afuera. .bazaar-card-cell envuelve cada <ProductCard> en la grilla
+   (tienda/page.tsx y page.tsx). Si el día de mañana cambia el layout
+   interno del ProductCard compartido, esto puede dejar de calzar y hay
+   que revisarlo — es el trade-off de no duplicar el componente. */
+.bazaar-card-cell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Caso "botón afuera" (varias presentaciones, .bazaar-buy-btn hermano del
+   card): lo empuja al fondo de la celda de grilla. */
+.bazaar-card-cell > .bazaar-buy-btn {
+  margin-top: auto;
+}
+
+/* Caso "botón adentro" (una sola presentación, el ProductCard trae su
+   propio botón "Agregar al carrito" y no hay .bazaar-buy-btn hermano):
+   estirar el card entero y empujar su botón interno al fondo también. */
+.bazaar-card-cell > a:only-child {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.bazaar-card-cell > a:only-child > div:last-child {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.bazaar-card-cell > a:only-child > div:last-child > button {
+  margin-top: auto;
+}
+
+/* Fila de presentaciones ("1u", "pack de 5u"...): una sola línea, con
+   scroll horizontal si no entran todas, en vez de saltar a una 2da línea
+   y desalinear la altura del card con los vecinos de la misma fila. */
+.bazaar-card-cell .flex.gap-1.flex-wrap {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.bazaar-card-cell .flex.gap-1.flex-wrap::-webkit-scrollbar {
+  display: none;
+}

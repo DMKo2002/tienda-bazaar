@@ -161,7 +161,7 @@ export default async function HomePage() {
             {catalog?.map((p: any, i: number) => {
               const cardProps = toCardProps(p, i)
               return (
-                <div key={p.id}>
+                <div key={p.id} className="bazaar-card-cell">
                   <ProductCard {...cardProps} />
                   {/* Puramente visual: el card entero ya es clickeable y lleva a
                       la ficha (acá se elige la presentación), esto solo hace ese
@@ -170,7 +170,7 @@ export default async function HomePage() {
                   {isListMode && showPrices && cardProps.sizes.length > 1 && (
                     <a
                       href={`/tienda/${cardProps.slug}`}
-                      className="block w-full mt-2 py-2.5 text-[11px] tracking-[0.15em] uppercase font-medium text-center bg-[var(--color-charcoal)] text-white hover:bg-[var(--color-stone)] transition-colors duration-200"
+                      className="bazaar-buy-btn block w-full py-2.5 text-[11px] tracking-[0.15em] uppercase font-medium text-center bg-[var(--color-charcoal)] text-white hover:bg-[var(--color-stone)] transition-colors duration-200"
                     >
                       Comprar
                     </a>
