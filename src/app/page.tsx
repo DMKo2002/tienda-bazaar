@@ -28,6 +28,16 @@ export default async function HomePage() {
   // Datos funcionales de la tienda (contacto, footer, checkout) — comunes a
   // las 6 plantillas, viven en tienda-core.
   const { tenant, config } = await getStoreData(supabase, TENANT_ID())
+  // Solo para esta plantilla (Bazaar): saber si la tienda usa lista de
+  // presentaciones en texto libre, para mostrar el botón "Comprar" bajo
+  // la tarjeta cuando un producto tiene más de una. Puramente visual —
+  // no vive en tienda-core, no afecta a ningún otro template.
+  const { data: variantModeRow } = await supabase
+    .from('store_config')
+    .select('variant_mode')
+    .eq('tenant_id', TENANT_ID())
+    .single()
+  const isListMode = (variantModeRow as any)?.variant_mode === 'simple'
 
   // Apariencia de ESTA plantilla (colecciones): propia de Bazaar, no vive en
   // tienda-core — así cada template queda intercambiable a futuro.
@@ -148,7 +158,26 @@ export default async function HomePage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
-            {catalog?.map((p: any, i: number) => <ProductCard {...toCardProps(p, i)} />)}
+            {catalog?.map((p: any, i: number) => {
+              const cardProps = toCardProps(p, i)
+              return (
+                <div key={p.id}>
+                  <ProductCard {...cardProps} />
+                  {/* Puramente visual: el card entero ya es clickeable y lleva a
+                      la ficha (acá se elige la presentación), esto solo hace ese
+                      camino obvio cuando hay más de una presentación. No agrega
+                      nada al carrito. */}
+                  {isListMode && showPrices && cardProps.sizes.length > 1 && (
+                    <a
+                      href={`/tienda/${cardProps.slug}`}
+                      className="block w-full mt-2 py-2.5 text-[11px] tracking-[0.15em] uppercase font-medium text-center bg-[var(--color-charcoal)] text-white hover:bg-[var(--color-stone)] transition-colors duration-200"
+                    >
+                      Comprar
+                    </a>
+                  )}
+                </div>
+              )
+            })}
 
             {(!catalog || catalog.length === 0) && (
               <div className="col-span-full py-20 text-center">

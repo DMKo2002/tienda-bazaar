@@ -25,6 +25,16 @@ export default async function TiendaPage({ searchParams }: Props) {
   const supabase = await createServerSupabase()
 
   const { tenant, config } = await getStoreData(supabase, TENANT_ID())
+  // Solo para esta plantilla (Bazaar): saber si la tienda usa lista de
+  // presentaciones en texto libre, para mostrar el botón "Comprar" bajo
+  // la tarjeta cuando un producto tiene más de una. Puramente visual —
+  // no vive en tienda-core, no afecta a ningún otro template.
+  const { data: variantModeRow } = await supabase
+    .from('store_config')
+    .select('variant_mode')
+    .eq('tenant_id', TENANT_ID())
+    .single()
+  const isListMode = (variantModeRow as any)?.variant_mode === 'simple'
   // Fetch all active categories (top-level + subcategories)
   const { data: allCategories } = await supabase
     .from('categories')
@@ -305,28 +315,41 @@ export default async function TiendaPage({ searchParams }: Props) {
           />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-12">
             {products.map((product: any, i: number) => (
-              <ProductCard
-                key={product.id}
-                id={product.id}
-                name={product.name}
-                slug={product.slug}
-                coverUrl={product.cover?.url}
-                images={product.images}
-                retailPrice={product.retailPrice}
-                retailCompareAt={product.retailCompareAt}
-                wholesalePrice={product.wholesalePrice}
-                showPrices={showPrices}
-                showWholesale={showWholesale}
-                priceVisibility={priceVisibility}
-                isRetailUser={isRetailUser}
-                colors={product.colors}
-                sizes={product.sizes}
-                index={i}
-                imageRatio={imageRatio}
-                variantId={product.variantId}
-                stock={product.stock}
-                ignoreStock={ignoreStock}
-              />
+              <div key={product.id}>
+                <ProductCard
+                  id={product.id}
+                  name={product.name}
+                  slug={product.slug}
+                  coverUrl={product.cover?.url}
+                  images={product.images}
+                  retailPrice={product.retailPrice}
+                  retailCompareAt={product.retailCompareAt}
+                  wholesalePrice={product.wholesalePrice}
+                  showPrices={showPrices}
+                  showWholesale={showWholesale}
+                  priceVisibility={priceVisibility}
+                  isRetailUser={isRetailUser}
+                  colors={product.colors}
+                  sizes={product.sizes}
+                  index={i}
+                  imageRatio={imageRatio}
+                  variantId={product.variantId}
+                  stock={product.stock}
+                  ignoreStock={ignoreStock}
+                />
+                {/* Puramente visual: el card entero ya es clickeable y lleva a la
+                    ficha (acá se elige la presentación), esto solo hace ese
+                    camino obvio cuando hay más de una y no hay botón de compra
+                    rápida. Nada de esto agrega al carrito. */}
+                {isListMode && showPrices && product.sizes.length > 1 && (
+                  <a
+                    href={`/tienda/${product.slug}`}
+                    className="block w-full mt-2 py-2.5 text-[11px] tracking-[0.15em] uppercase font-medium text-center bg-[var(--color-charcoal)] text-white hover:bg-[var(--color-stone)] transition-colors duration-200"
+                  >
+                    Comprar
+                  </a>
+                )}
+              </div>
             ))}
 
             {products.length === 0 && (
