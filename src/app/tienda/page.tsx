@@ -346,11 +346,12 @@ export default async function TiendaPage({ searchParams }: Props) {
                   variantId={product.variantId}
                   stock={product.stock}
                   ignoreStock={ignoreStock}
+                  buyButtonLabel={isListMode ? 'Comprar' : undefined}
                 />
                 {/* Puramente visual: el card entero ya es clickeable y lleva a la
-                    ficha (acá se elige la presentación), esto solo hace ese
-                    camino obvio cuando hay más de una y no hay botón de compra
-                    rápida. Nada de esto agrega al carrito. */}
+                    ficha (acá se elige la presentación), esto solo hace ese camino
+                    obvio cuando no hay botón de compra rápida (varias presentaciones,
+                    solo por mayor, o sin precio). Nada de esto agrega al carrito. */}
                 {isListMode && showPrices && !canQuickBuy && (
                   <a
                     href={`/tienda/${product.slug}`}

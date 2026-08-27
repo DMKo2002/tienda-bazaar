@@ -169,10 +169,11 @@ export default async function HomePage() {
               const canQuickBuy = isSimpleProduct && !!cardProps.variantId && !!cardProps.retailPrice
               return (
                 <div key={p.id} className="bazaar-card-cell">
-                  <ProductCard {...cardProps} />
+                  <ProductCard {...cardProps} buyButtonLabel={isListMode ? 'Comprar' : undefined} />
                   {/* Puramente visual: el card entero ya es clickeable y lleva a
                       la ficha (acá se elige la presentación), esto solo hace ese
-                      camino obvio cuando hay más de una presentación. No agrega
+                      camino obvio cuando no hay botón de compra rápida (varias
+                      presentaciones, solo por mayor, o sin precio). No agrega
                       nada al carrito. */}
                   {isListMode && showPrices && !canQuickBuy && (
                     <a
