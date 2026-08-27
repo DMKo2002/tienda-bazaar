@@ -314,7 +314,17 @@ export default async function TiendaPage({ searchParams }: Props) {
             activeFilterCount={[searchParams.color, searchParams.talle, searchParams.precio_min, searchParams.precio_max, searchParams.descuento].filter(Boolean).length}
           />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-12">
-            {products.map((product: any, i: number) => (
+            {products.map((product: any, i: number) => {
+              // Mismo cálculo que ProductCard usa internamente para decidir
+              // si muestra su propio botón de compra rápida ("Agregar al
+              // carrito") — lo replicamos acá para saber cuándo NO lo va a
+              // mostrar y así completar con nuestro "Comprar" (puramente
+              // visual, sin tocar ProductCard). Cubre: varias presentaciones,
+              // productos solo por mayor (sin precio minorista) y productos
+              // sin ningún precio cargado — ninguna tarjeta se queda sin botón.
+              const isSimpleProduct = product.colors.length === 0 && product.sizes.length === 0
+              const canQuickBuy = isSimpleProduct && !!product.variantId && !!product.retailPrice
+              return (
               <div key={product.id} className="bazaar-card-cell">
                 <ProductCard
                   id={product.id}
@@ -341,7 +351,7 @@ export default async function TiendaPage({ searchParams }: Props) {
                     ficha (acá se elige la presentación), esto solo hace ese
                     camino obvio cuando hay más de una y no hay botón de compra
                     rápida. Nada de esto agrega al carrito. */}
-                {isListMode && showPrices && product.sizes.length > 1 && (
+                {isListMode && showPrices && !canQuickBuy && (
                   <a
                     href={`/tienda/${product.slug}`}
                     className="bazaar-buy-btn block w-full py-2.5 text-[11px] tracking-[0.15em] uppercase font-medium text-center bg-[var(--color-charcoal)] text-white hover:bg-[var(--color-stone)] transition-colors duration-200"
@@ -350,7 +360,8 @@ export default async function TiendaPage({ searchParams }: Props) {
                   </a>
                 )}
               </div>
-            ))}
+              )
+            })}
 
             {products.length === 0 && (
               <div className="col-span-full py-24 text-center">

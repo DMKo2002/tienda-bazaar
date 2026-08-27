@@ -160,6 +160,13 @@ export default async function HomePage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
             {catalog?.map((p: any, i: number) => {
               const cardProps = toCardProps(p, i)
+              // Mismo cálculo que ProductCard usa internamente para decidir si
+              // muestra su propio botón de compra rápida — lo replicamos para
+              // completar con "Comprar" cuando no lo va a mostrar (varias
+              // presentaciones, solo por mayor, o sin precio cargado). Ninguna
+              // tarjeta se queda sin botón.
+              const isSimpleProduct = cardProps.colors.length === 0 && cardProps.sizes.length === 0
+              const canQuickBuy = isSimpleProduct && !!cardProps.variantId && !!cardProps.retailPrice
               return (
                 <div key={p.id} className="bazaar-card-cell">
                   <ProductCard {...cardProps} />
@@ -167,7 +174,7 @@ export default async function HomePage() {
                       la ficha (acá se elige la presentación), esto solo hace ese
                       camino obvio cuando hay más de una presentación. No agrega
                       nada al carrito. */}
-                  {isListMode && showPrices && cardProps.sizes.length > 1 && (
+                  {isListMode && showPrices && !canQuickBuy && (
                     <a
                       href={`/tienda/${cardProps.slug}`}
                       className="bazaar-buy-btn block w-full py-2.5 text-[11px] tracking-[0.15em] uppercase font-medium text-center bg-[var(--color-charcoal)] text-white hover:bg-[var(--color-stone)] transition-colors duration-200"

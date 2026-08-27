@@ -123,6 +123,9 @@ body {
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
+  /* Sin esto la fila de presentaciones no deja nada de aire antes del
+     botón (ProductCard no le pone margen abajo) — se ve pegado. */
+  margin-bottom: 0.75rem;
 }
 .bazaar-card-cell .flex.gap-1.flex-wrap::-webkit-scrollbar {
   display: none;
