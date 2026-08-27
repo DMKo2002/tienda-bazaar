@@ -315,17 +315,13 @@ export default async function TiendaPage({ searchParams }: Props) {
           />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-12">
             {products.map((product: any, i: number) => {
-              // Mismo cálculo que ProductCard usa internamente para decidir
-              // si muestra su propio botón de compra rápida ("Agregar al
-              // carrito") — lo replicamos acá para saber cuándo NO lo va a
-              // mostrar y así completar con nuestro "Comprar" (puramente
-              // visual, sin tocar ProductCard). Cubre: varias presentaciones,
-              // productos solo por mayor (sin precio minorista) y productos
-              // sin ningún precio cargado — ninguna tarjeta se queda sin botón.
-              const isSimpleProduct = product.colors.length === 0 && product.sizes.length === 0
-              const canQuickBuy = isSimpleProduct && !!product.variantId && !!product.retailPrice
+              // Todas las tarjetas usan el mismo botón "Comprar" (hermano,
+              // abajo) — sin excepción, sin importar cuántas presentaciones
+              // tenga el producto ni si tiene precio minorista o no.
               return (
               <div key={product.id} className="bazaar-card-cell">
+                {/* hideQuickBuyButton: en Bazaar TODAS las tarjetas usan
+                    nuestro botón hermano de abajo, nunca el nativo. */}
                 <ProductCard
                   id={product.id}
                   name={product.name}
@@ -346,13 +342,12 @@ export default async function TiendaPage({ searchParams }: Props) {
                   variantId={product.variantId}
                   stock={product.stock}
                   ignoreStock={ignoreStock}
-                  buyButtonLabel={isListMode ? 'Comprar' : undefined}
+                  hideQuickBuyButton={isListMode}
                 />
                 {/* Puramente visual: el card entero ya es clickeable y lleva a la
-                    ficha (acá se elige la presentación), esto solo hace ese camino
-                    obvio cuando no hay botón de compra rápida (varias presentaciones,
-                    solo por mayor, o sin precio). Nada de esto agrega al carrito. */}
-                {isListMode && showPrices && !canQuickBuy && (
+                    ficha (acá se elige la presentación / se agrega al carrito).
+                    Nada de esto agrega al carrito directamente. */}
+                {isListMode && showPrices && (
                   <a
                     href={`/tienda/${product.slug}`}
                     className="bazaar-buy-btn block w-full py-2.5 text-[11px] tracking-[0.15em] uppercase font-medium text-center bg-[var(--color-charcoal)] text-white hover:bg-[var(--color-stone)] transition-colors duration-200"
