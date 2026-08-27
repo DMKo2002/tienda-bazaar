@@ -103,7 +103,10 @@ body {
    propio botón "Agregar al carrito" y no hay .bazaar-buy-btn hermano):
    estirar el card entero y empujar su botón interno al fondo también. */
 .bazaar-card-cell > a:only-child {
-  height: 100%;
+  /* flex: 1 (no height: 100%) para que crezca de forma prolija dentro de
+     la columna — con height: 100% quedaba con un desajuste de unos px
+     contra el botón "afuera" (.bazaar-buy-btn) en la misma fila. */
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
 }
