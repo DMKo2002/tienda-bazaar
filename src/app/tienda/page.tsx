@@ -8,7 +8,7 @@ import ProductCard from '@/components/shop/ProductCard'
 import MobileFilterDrawer from '@/components/shop/MobileFilterDrawer'
 
 interface Props {
-  searchParams: {
+  searchParams: Promise<{
     cat?: string
     orden?: string
     q?: string
@@ -17,15 +17,16 @@ interface Props {
     precio_min?: string
     precio_max?: string
     descuento?: string
-  }
+  }>
 }
 
 export const metadata: Metadata = { title: 'Tienda', alternates: { canonical: '/tienda' } }
 
-export default async function TiendaPage({ searchParams }: Props) {
+export default async function TiendaPage({ searchParams: searchParamsPromise }: Props) {
+  const searchParams = await searchParamsPromise
   const supabase = await createServerSupabase()
 
-  const { tenant, config } = await getStoreData(supabase, TENANT_ID())
+  const { tenant, config } = await getStoreData(supabase, await TENANT_ID())
   // Solo para esta plantilla (Bazaar): saber si la tienda usa lista de
   // presentaciones en texto libre, para mostrar el botón "Comprar" bajo
   // la tarjeta cuando un producto tiene más de una. Puramente visual —
@@ -33,14 +34,14 @@ export default async function TiendaPage({ searchParams }: Props) {
   const { data: variantModeRow } = await supabase
     .from('store_config')
     .select('variant_mode')
-    .eq('tenant_id', TENANT_ID())
+    .eq('tenant_id', await TENANT_ID())
     .single()
   const isListMode = (variantModeRow as any)?.variant_mode === 'simple'
   // Fetch all active categories (top-level + subcategories)
   const { data: allCategories } = await supabase
     .from('categories')
     .select('id, name, slug, parent_id')
-    .eq('tenant_id', TENANT_ID())
+    .eq('tenant_id', await TENANT_ID())
     .eq('active', true)
     .order('sort_order')
 
@@ -66,7 +67,7 @@ export default async function TiendaPage({ searchParams }: Props) {
   let query = supabase
     .from('products')
     .select('id, name, slug, category_id, product_categories(category_id), product_images(*), variants(id, color, color_hex, size, stock, price_rules(type, price, compare_at_price, active, min_qty))')
-    .eq('tenant_id', TENANT_ID())
+    .eq('tenant_id', await TENANT_ID())
     .eq('active', true)
 
   // Filter by name/search
@@ -263,7 +264,7 @@ export default async function TiendaPage({ searchParams }: Props) {
       if (user) {
         const service = createServiceSupabase()
         // Admin ve todo
-        const { data: adminUser } = await service.from('users').select('id').eq('email', user.email ?? '').eq('tenant_id', TENANT_ID()).limit(1)
+        const { data: adminUser } = await service.from('users').select('id').eq('email', user.email ?? '').eq('tenant_id', await TENANT_ID()).limit(1)
         if (adminUser && adminUser.length > 0) {
           showPrices = true
           showWholesale = true
@@ -271,7 +272,7 @@ export default async function TiendaPage({ searchParams }: Props) {
           // Service client bypasea RLS. Usar auth_user_id (no email): el mail de
           // Auth puede ser "disfrazado" por tienda (ver lib/auth-email.ts) y ya
           // no coincide con customers.email para cuentas nuevas.
-          const { data: cust } = await service.from('customers').select('type').eq('auth_user_id', user.id).eq('tenant_id', TENANT_ID()).maybeSingle()
+          const { data: cust } = await service.from('customers').select('type').eq('auth_user_id', user.id).eq('tenant_id', await TENANT_ID()).maybeSingle()
           const isWholesale = cust?.type === 'wholesale'
           const isRegistered = !!cust
           if (priceVisibility === 'logged_in') {

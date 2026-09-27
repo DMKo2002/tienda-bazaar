@@ -24,14 +24,14 @@ const COLLECTION_PALETTES = [
 
 export default async function HomePage() {
   // cookies() debe llamarse ANTES de cualquier await
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const isLoggedIn = cookieStore.getAll().some(c => c.name.includes('-auth-token') && (c.value?.length ?? 0) > 10)
 
   const supabase = await createServerSupabase()
 
   // Datos funcionales de la tienda (contacto, footer, checkout) — comunes a
   // las 6 plantillas, viven en tienda-core.
-  const { tenant, config } = await getStoreData(supabase, TENANT_ID())
+  const { tenant, config } = await getStoreData(supabase, await TENANT_ID())
   // Solo para esta plantilla (Bazaar): saber si la tienda usa lista de
   // presentaciones en texto libre, para mostrar el botón "Comprar" bajo
   // la tarjeta cuando un producto tiene más de una. Puramente visual —
@@ -39,7 +39,7 @@ export default async function HomePage() {
   const { data: variantModeRow } = await supabase
     .from('store_config')
     .select('variant_mode')
-    .eq('tenant_id', TENANT_ID())
+    .eq('tenant_id', await TENANT_ID())
     .single()
   const isListMode = (variantModeRow as any)?.variant_mode === 'simple'
 
@@ -48,14 +48,14 @@ export default async function HomePage() {
   const { data: appearance } = await supabase
     .from('store_config')
     .select('collection_posts, collection_text_color')
-    .eq('tenant_id', TENANT_ID())
+    .eq('tenant_id', await TENANT_ID())
     .single()
 
   // Imágenes configurables desde Panel Admin > Personalización (banners grandes)
   const { data: assetsRows } = await supabase
     .from('store_assets')
     .select('slot, url')
-    .eq('tenant_id', TENANT_ID())
+    .eq('tenant_id', await TENANT_ID())
 
   const asset = (slot: string): string | null =>
     assetsRows?.find(a => a.slot === slot)?.url ?? null
@@ -65,7 +65,7 @@ export default async function HomePage() {
   const { data: categories } = await supabase
     .from('categories')
     .select('id, name, slug')
-    .eq('tenant_id', TENANT_ID())
+    .eq('tenant_id', await TENANT_ID())
     .eq('active', true)
     .order('sort_order')
     .limit(3)
@@ -77,7 +77,7 @@ export default async function HomePage() {
   const { data: catalog } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
-    .eq('tenant_id', TENANT_ID())
+    .eq('tenant_id', await TENANT_ID())
     .eq('active', true)
     .order('sort_order', { ascending: true })
     .limit(10)
@@ -96,7 +96,6 @@ export default async function HomePage() {
     const colors = [...new Set((product.variants ?? []).map((v: any) => v.color).filter(Boolean))] as string[]
     const sizes = [...new Set((product.variants ?? []).map((v: any) => v.size).filter(Boolean))] as string[]
     return {
-      key: product.id,
       id: product.id,
       name: product.name,
       slug: product.slug,
@@ -173,7 +172,7 @@ export default async function HomePage() {
                       nuestro botón hermano de abajo, nunca el nativo — así
                       todas comparten la misma estructura/alineación, sin
                       excepción para el caso de una sola presentación. */}
-                  <ProductCard {...cardProps} hideQuickBuyButton={isListMode} />
+                  <ProductCard key={p.id} {...cardProps} hideQuickBuyButton={isListMode} />
                   {/* Puramente visual: el card entero ya es clickeable y lleva a
                       la ficha (acá se elige la presentación / se agrega al
                       carrito). No agrega nada al carrito directamente. */}
